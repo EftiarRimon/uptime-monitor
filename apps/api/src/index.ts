@@ -1,12 +1,17 @@
-import express from "express";
+import "dotenv/config";
+import { createApp } from "./app.js";
+import { initDatabase } from "./db.js";
 
-const app = express();
+const app = createApp();
 const port = process.env.PORT ?? 3000;
-
-app.get("/health", (_req, res) => {
-  res.json({ status: "ok", uptime: process.uptime() });
-});
-
-app.listen(port, () => {
+app.listen(port, async () => {
   console.log(`API listening on port ${port}`);
+  try {
+    await initDatabase();
+    console.log("Database ready");
+  } catch {
+    console.error(
+      "Database unavailable; API will continue serving health checks",
+    );
+  }
 });

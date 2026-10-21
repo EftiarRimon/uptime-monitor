@@ -5,6 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "dev:api": "npm --prefix apps/api run dev",
+    "typecheck": "npm --prefix apps/api run typecheck",
     "lint": "eslint .",
     "format": "prettier --write .",
     "prepare": "husky"
