@@ -4,6 +4,9 @@ import Head from "next/head";
 import Link from "next/link";
 import AccessForm from "../components/AccessForm";
 import MonitorForm from "../components/MonitorForm";
+import StatusSettings from "../components/StatusSettings";
+import ApiKeySettings from "../components/ApiKeySettings";
+import NotificationSettings from "../components/NotificationSettings";
 import {
   ApiError,
   request,
@@ -626,6 +629,9 @@ export default function Home() {
             ))
           )}
         </section>
+        <StatusSettings token={token} canManage={canManage} />
+        <ApiKeySettings token={token} canManage={canManage} />
+        <NotificationSettings token={token} canManage={canManage} />
       </div>
     </main>
   );
