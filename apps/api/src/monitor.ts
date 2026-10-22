@@ -1,8 +1,26 @@
 import { pool } from "./db.js";
-import { publicRequest } from "./outbound.js";
+import { isPublicAddress, publicRequest } from "./outbound.js";
 import type { PoolClient } from "pg";
 import net from "node:net";
 import dns from "node:dns/promises";
+async function resolvePublicAddress(host: string) {
+  const hostname = host.replace(/^\[|\]$/g, "");
+  if (
+    !net.isIP(hostname) &&
+    /^(0x[0-9a-f]+|\d+)(\.(0x[0-9a-f]+|\d+))*$/i.test(hostname)
+  )
+    throw new Error("Target is blocked");
+  const records = await dns.lookup(hostname, { all: true, verbatim: true });
+  if (
+    records.length === 0 ||
+    !records.every((record) => isPublicAddress(record.address))
+  ) {
+    throw new Error("Target is blocked");
+  }
+  const first = records[0];
+  if (!first) throw new Error("Target is blocked");
+  return first.address;
+}
 
 export async function checkMonitor(
   id: number | string,
@@ -41,11 +59,11 @@ export async function checkMonitor(
       const parsed = new URL(monitor.url);
       const host = parsed.hostname;
       const port = Number(parsed.port || (type === "ping" ? 443 : 80));
-      await dns.lookup(host);
+      const targetIp = await resolvePublicAddress(host);
       if (type === "ping") {
         await new Promise<void>((resolve, reject) => {
           const socket = net.createConnection(
-            { host, port, timeout: 5000 },
+            { host: targetIp, port, timeout: 5000 },
             () => {
               socket.destroy();
               resolve();
@@ -60,7 +78,7 @@ export async function checkMonitor(
       } else {
         await new Promise<void>((resolve, reject) => {
           const socket = net.createConnection(
-            { host, port, timeout: 5000 },
+            { host: targetIp, port, timeout: 5000 },
             () => {
               socket.destroy();
               resolve();

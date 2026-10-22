@@ -383,3 +383,47 @@ test("stored private targets produce failed check and delivery history without f
     await pool.end();
   }
 });
+
+test("tcp and ping checks never connect to private addresses", async () => {
+  const net = await import("node:net");
+  let connections = 0;
+  const server = net.createServer((socket) => {
+    connections += 1;
+    socket.destroy();
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address();
+  const original = pool.query;
+  let current = { type: "tcp", url: "" };
+  pool.query = async (sql, values) => {
+    if (sql.startsWith("SELECT id, url"))
+      return {
+        rowCount: 1,
+        rows: [{ id: 7, url: current.url, monitor_type: current.type }],
+      };
+    if (sql.includes("INSERT INTO monitor_checks"))
+      return {
+        rowCount: 1,
+        rows: [{ id: 10, status: values[1], error_message: values[4] }],
+      };
+    return { rowCount: 1, rows: [] };
+  };
+  try {
+    for (const [type, url] of [
+      ["tcp", `tcp://127.0.0.1:${port}`],
+      ["ping", `ping://127.0.0.1:${port}`],
+      ["tcp", `tcp://127.1:${port}`],
+      ["tcp", `tcp://[::1]:${port}`],
+      ["tcp", "tcp://169.254.169.254:80"],
+    ]) {
+      current = { type, url };
+      const result = await checkMonitor(7, 42);
+      assert.equal(result.status, "down", url);
+      assert.match(result.error_message, /Target is blocked/, url);
+    }
+    assert.equal(connections, 0);
+  } finally {
+    pool.query = original;
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
