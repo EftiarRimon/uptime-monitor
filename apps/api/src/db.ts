@@ -49,6 +49,7 @@ export async function initDatabase() {
     CREATE TABLE IF NOT EXISTS monitors (
       id BIGSERIAL PRIMARY KEY,
       name TEXT NOT NULL,
+      monitor_type TEXT NOT NULL DEFAULT 'http' CHECK (monitor_type IN ('http', 'tcp', 'ping', 'heartbeat')),
       url TEXT NOT NULL,
       interval_seconds INTEGER NOT NULL DEFAULT 60 CHECK (interval_seconds >= 30),
       is_paused BOOLEAN NOT NULL DEFAULT FALSE,
@@ -109,5 +110,20 @@ export async function initDatabase() {
     ALTER TABLE notification_deliveries ADD COLUMN IF NOT EXISTS attempt INTEGER NOT NULL DEFAULT 1;
     CREATE INDEX IF NOT EXISTS monitor_checks_monitor_time_idx ON monitor_checks (monitor_id, checked_at DESC);
     ALTER TABLE monitors ADD COLUMN IF NOT EXISTS workspace_id BIGINT REFERENCES workspaces(id) ON DELETE CASCADE;
+    ALTER TABLE monitors ADD COLUMN IF NOT EXISTS monitor_type TEXT NOT NULL DEFAULT 'http';
+    ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS status_slug TEXT;
+    ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS status_public BOOLEAN NOT NULL DEFAULT FALSE;
+    CREATE UNIQUE INDEX IF NOT EXISTS workspaces_status_slug_idx ON workspaces(status_slug) WHERE status_slug IS NOT NULL;
   `);
+}
+
+/** Remove raw check samples older than the configured retention window. */
+export async function pruneCheckHistory(retentionDays: number) {
+  if (!Number.isSafeInteger(retentionDays) || retentionDays < 1)
+    throw new Error("Invalid check-history retention");
+  const result = await pool.query(
+    "DELETE FROM monitor_checks WHERE checked_at < clock_timestamp() - ($1::text || ' days')::interval",
+    [retentionDays],
+  );
+  return result.rowCount ?? 0;
 }

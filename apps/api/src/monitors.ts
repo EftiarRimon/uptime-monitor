@@ -11,6 +11,8 @@ import {
   validateId,
 } from "./validation.js";
 import { sendError } from "./errors.js";
+import { updateIncident } from "./incident.js";
+import { notifyIncident } from "./notifications.js";
 
 export const monitorRouter = Router();
 monitorRouter.use(authenticate);
@@ -33,15 +35,17 @@ monitorRouter.post(
     const {
       name,
       url,
+      monitorType = "http",
       intervalSeconds = 60,
     } = req.body as {
       name?: unknown;
       url?: unknown;
+      monitorType?: unknown;
       intervalSeconds?: unknown;
     };
     const result = await pool.query(
-      "INSERT INTO monitors (workspace_id, name, url, interval_seconds) VALUES ($1, $2, $3, $4) RETURNING *",
-      [req.auth!.workspaceId, name, url, intervalSeconds],
+      "INSERT INTO monitors (workspace_id, name, url, monitor_type, interval_seconds) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+      [req.auth!.workspaceId, name, url, monitorType, intervalSeconds],
     );
     res.status(201).json({ monitor: result.rows[0] });
   },
@@ -53,15 +57,14 @@ monitorRouter.patch(
   validateBody(updateMonitorBody),
   async (req, res) => {
     const id = Number(req.params.id);
-    const { name, url, intervalSeconds, isPaused } = req.body as Record<
-      string,
-      unknown
-    >;
+    const { name, url, monitorType, intervalSeconds, isPaused } =
+      req.body as Record<string, unknown>;
     const result = await pool.query(
-      `UPDATE monitors SET name = COALESCE($1, name), url = COALESCE($2, url), interval_seconds = COALESCE($3, interval_seconds), is_paused = COALESCE($4, is_paused), updated_at = NOW() WHERE id = $5 AND workspace_id = $6 RETURNING *`,
+      `UPDATE monitors SET name = COALESCE($1, name), url = COALESCE($2, url), monitor_type = COALESCE($3, monitor_type), interval_seconds = COALESCE($4, interval_seconds), is_paused = COALESCE($5, is_paused), updated_at = NOW() WHERE id = $6 AND workspace_id = $7 RETURNING *`,
       [
         name ?? null,
         url ?? null,
+        monitorType ?? null,
         intervalSeconds ?? null,
         isPaused ?? null,
         id,
@@ -96,6 +99,18 @@ monitorRouter.post(
       req.auth!.workspaceId,
     );
     if (!check) return sendError(res, 404, "Monitor not found");
+    const event = await updateIncident(
+      req.auth!.workspaceId,
+      Number(req.params.id),
+      check,
+    );
+    if (event)
+      await notifyIncident(
+        req.auth!.workspaceId,
+        event.incident.id,
+        event.event,
+        event.incident,
+      );
     res.json({ check });
   },
 );

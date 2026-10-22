@@ -29,7 +29,7 @@ export type AuthUser = {
   role: "owner" | "admin" | "viewer";
   sessionId: string;
 };
-// eslint-disable-next-line @typescript-eslint/no-namespace
+/* eslint-disable @typescript-eslint/no-namespace */
 declare global {
   namespace Express {
     interface Request {
@@ -37,6 +37,7 @@ declare global {
     }
   }
 }
+/* eslint-enable @typescript-eslint/no-namespace */
 export const authRouter = Router();
 
 function tokenFor(user: AuthUser) {
@@ -102,14 +103,12 @@ authRouter.post(
         sessionId: session.id,
       };
       setRefreshCookie(res, session.token, session.expiresAt);
-      return res
-        .status(201)
-        .json({
-          user: user.rows[0],
-          workspace: workspace.rows[0],
-          role: "owner",
-          accessToken: tokenFor(authUser),
-        });
+      return res.status(201).json({
+        user: user.rows[0],
+        workspace: workspace.rows[0],
+        role: "owner",
+        accessToken: tokenFor(authUser),
+      });
     } catch (error: unknown) {
       await client.query("ROLLBACK");
       if (

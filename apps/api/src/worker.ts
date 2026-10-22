@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { pool, initDatabase } from "./db.js";
+import { pool, initDatabase, pruneCheckHistory } from "./db.js";
 import {
   createCheckQueue,
   createCheckWorker,
@@ -15,12 +15,14 @@ function integerSetting(name: string, fallback: number, maximum: number) {
 
 const pollMs = integerSetting("WORKER_POLL_MS", 10_000, 3_600_000);
 const concurrency = integerSetting("WORKER_CONCURRENCY", 5, 50);
+const retentionDays = integerSetting("CHECK_RETENTION_DAYS", 30, 3650);
 await initDatabase();
 const queue = createCheckQueue();
 const worker = createCheckWorker({ concurrency });
 let stopping = false;
 let timer: ReturnType<typeof setTimeout> | undefined;
 let polling = Promise.resolve();
+let lastPrunedAt = 0;
 
 // Connection errors can contain credentials or destinations. Log only a code.
 function errorCode(error: unknown) {
@@ -50,6 +52,12 @@ worker.on("completed", (job, result) => {
 
 function poll() {
   polling = enqueueDueChecks(queue)
+    .then(async () => {
+      if (Date.now() - lastPrunedAt < 60 * 60 * 1000) return;
+      const removed = await pruneCheckHistory(retentionDays);
+      lastPrunedAt = Date.now();
+      if (removed) console.log(`[worker] pruned ${removed} check samples`);
+    })
     .then(() => undefined)
     .catch((error: unknown) =>
       console.error(`[worker] scheduling failed: ${errorCode(error)}`),

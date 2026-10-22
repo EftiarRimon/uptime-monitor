@@ -8,6 +8,8 @@ import { incidentRouter } from "./incidents.js";
 import { notificationRouter } from "./notifications.js";
 import { apiKeyRouter } from "./apiKeys.js";
 import { publicApiRouter } from "./publicApi.js";
+import { statusPageRouter } from "./statusPage.js";
+import { openapiRouter } from "./openapi.js";
 import { webOrigins } from "./authConfig.js";
 import { errorHandler, requestContext, sendError } from "./errors.js";
 
@@ -121,6 +123,7 @@ export function createApp(overrides: Partial<Limits> = {}) {
   app.get("/health", (_req, res) =>
     res.json({ status: "ok", uptime: process.uptime() }),
   );
+  app.use("/openapi.json", openapiRouter);
   app.use(
     ["/monitors", "/incidents", "/notifications", "/api-keys", "/public"],
     (_req, res, next) => {
@@ -134,6 +137,7 @@ export function createApp(overrides: Partial<Limits> = {}) {
   app.use("/notifications", notificationRouter);
   app.use("/api-keys", apiKeyRouter);
   app.use("/public", publicApiRouter);
+  app.use("/status", statusPageRouter);
   app.use((_req, res) => sendError(res, 404, "Route not found"));
   app.use(errorHandler);
   return app;

@@ -98,16 +98,18 @@ test("edit and pause/resume retain the workspace boundary and false values", asy
       {
         name: " API ",
         url: "https://example.com",
+        monitorType: "http",
         intervalSeconds: 90,
         isPaused,
       },
       "admin",
     );
     assert.equal(response.status, 200);
-    assert.match(queries.at(-1).sql, /WHERE id = \$5 AND workspace_id = \$6/);
+    assert.match(queries.at(-1).sql, /WHERE id = \$6 AND workspace_id = \$7/);
     assert.deepEqual(queries.at(-1).values, [
       "API",
       "https://example.com",
+      "http",
       90,
       isPaused,
       7,

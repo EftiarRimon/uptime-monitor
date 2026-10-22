@@ -11,7 +11,7 @@ function hash(value: string) {
 }
 export const apiKeyRouter = Router();
 // Express request augmentation for API-key authenticated public calls.
-// eslint-disable-next-line @typescript-eslint/no-namespace
+/* eslint-disable @typescript-eslint/no-namespace */
 declare global {
   namespace Express {
     interface Request {
@@ -19,6 +19,7 @@ declare global {
     }
   }
 }
+/* eslint-enable @typescript-eslint/no-namespace */
 apiKeyRouter.use(authenticate);
 apiKeyRouter.param("id", validateId);
 apiKeyRouter.use((_req, res, next) => {
@@ -45,13 +46,11 @@ apiKeyRouter.post(
       "INSERT INTO api_keys (workspace_id, name, key_hash, key_prefix) VALUES ($1, $2, $3, $4) RETURNING id, name, key_prefix, created_at",
       [req.auth!.workspaceId, name, hash(raw), raw.slice(0, 10)],
     );
-    res
-      .status(201)
-      .json({
-        key: raw,
-        metadata: result.rows[0],
-        warning: "Store this key now. It will not be shown again.",
-      });
+    res.status(201).json({
+      key: raw,
+      metadata: result.rows[0],
+      warning: "Store this key now. It will not be shown again.",
+    });
   },
 );
 

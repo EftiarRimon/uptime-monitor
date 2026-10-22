@@ -1,6 +1,8 @@
 import { pool } from "./db.js";
 import { publicRequest } from "./outbound.js";
 import type { PoolClient } from "pg";
+import net from "node:net";
+import dns from "node:dns/promises";
 
 export async function checkMonitor(
   id: number | string,
@@ -8,20 +10,71 @@ export async function checkMonitor(
   database: Pick<PoolClient, "query"> = pool,
 ) {
   const result = await database.query(
-    "SELECT id, url FROM monitors WHERE id = $1 AND workspace_id = $2",
+    "SELECT id, url, monitor_type FROM monitors WHERE id = $1 AND workspace_id = $2",
     [id, workspaceId],
   );
   if (!result.rowCount) return null;
-  const monitor = result.rows[0] as { id: number; url: string };
+  const monitor = result.rows[0] as {
+    id: number;
+    url: string;
+    monitor_type?: string;
+  };
   const started = Date.now();
   let status: "up" | "down" = "down";
   let statusCode: number | null = null;
   let errorMessage: string | null = null;
   try {
-    const response = await publicRequest(monitor.url);
-    statusCode = response.status;
-    status = response.ok ? "up" : "down";
-    if (!response.ok) errorMessage = `HTTP ${response.status}`;
+    const type = monitor.monitor_type ?? "http";
+    if (type === "http") {
+      const response = await publicRequest(monitor.url);
+      statusCode = response.status;
+      status = response.ok ? "up" : "down";
+      if (!response.ok) errorMessage = `HTTP ${response.status}`;
+    } else if (type === "heartbeat") {
+      const response = await publicRequest(
+        monitor.url.replace(/^heartbeat:/, "http:"),
+      );
+      statusCode = response.status;
+      status = response.ok ? "up" : "down";
+      if (!response.ok) errorMessage = `Heartbeat HTTP ${response.status}`;
+    } else {
+      const parsed = new URL(monitor.url);
+      const host = parsed.hostname;
+      const port = Number(parsed.port || (type === "ping" ? 443 : 80));
+      await dns.lookup(host);
+      if (type === "ping") {
+        await new Promise<void>((resolve, reject) => {
+          const socket = net.createConnection(
+            { host, port, timeout: 5000 },
+            () => {
+              socket.destroy();
+              resolve();
+            },
+          );
+          socket.on("error", reject);
+          socket.on("timeout", () => {
+            socket.destroy();
+            reject(new Error("Ping timeout"));
+          });
+        });
+      } else {
+        await new Promise<void>((resolve, reject) => {
+          const socket = net.createConnection(
+            { host, port, timeout: 5000 },
+            () => {
+              socket.destroy();
+              resolve();
+            },
+          );
+          socket.on("error", reject);
+          socket.on("timeout", () => {
+            socket.destroy();
+            reject(new Error("TCP timeout"));
+          });
+        });
+      }
+      status = "up";
+    }
   } catch (error) {
     errorMessage = error instanceof Error ? error.message : "Request failed";
   }

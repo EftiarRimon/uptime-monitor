@@ -344,10 +344,12 @@ test("stored private targets produce failed check and delivery history without f
   const statements = [];
   pool.query = async (sql, values) => {
     statements.push({ sql, values });
-    if (sql.startsWith("SELECT id, url FROM monitors"))
+    if (sql.startsWith("SELECT id, url"))
       return {
         rowCount: 1,
-        rows: [{ id: 7, url: "http://169.254.169.254/secret" }],
+        rows: [
+          { id: 7, url: "http://169.254.169.254/secret", monitor_type: "http" },
+        ],
       };
     if (sql.startsWith("SELECT id, type, target"))
       return {

@@ -26,6 +26,28 @@ export const httpUrl = z
       return false;
     }
   }, "URL must be a public HTTP or HTTPS destination without credentials");
+const supportedScheme = /^(https?|tcp|ping|heartbeat):\/\//;
+const serviceTarget = z
+  .string()
+  .trim()
+  .min(3)
+  .max(2048)
+  .superRefine((value, ctx) => {
+    if (!supportedScheme.test(value)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Target must use a supported monitor scheme",
+      });
+      return;
+    }
+    if (/^https?:\/\//.test(value) && !httpUrl.safeParse(value).success) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "URL must be a public HTTP or HTTPS destination without credentials",
+      });
+    }
+  });
 
 export const registerBody = z
   .object({
@@ -49,12 +71,18 @@ export const loginBody = z
   .strict();
 export const emptyBody = z.object({}).strict().default({});
 export const createMonitorBody = z
-  .object({ name, url: httpUrl, intervalSeconds: interval.default(60) })
+  .object({
+    name,
+    url: serviceTarget,
+    monitorType: z.enum(["http", "tcp", "ping", "heartbeat"]).default("http"),
+    intervalSeconds: interval.default(60),
+  })
   .strict();
 export const updateMonitorBody = z
   .object({
     name: name.optional(),
-    url: httpUrl.optional(),
+    url: serviceTarget.optional(),
+    monitorType: z.enum(["http", "tcp", "ping", "heartbeat"]).optional(),
     intervalSeconds: interval.optional(),
     isPaused: z.boolean().optional(),
   })
@@ -67,6 +95,26 @@ export const historyQuery = z
   .object({ hours: z.enum(["24", "168", "720"]).default("24") })
   .strict();
 export const apiKeyBody = z.object({ name }).strict();
+export const statusSettingsBody = z
+  .object({
+    slug: z
+      .string()
+      .trim()
+      .regex(
+        /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+        "Slug must use lowercase letters, numbers, and hyphens",
+      )
+      .min(3)
+      .max(80)
+      .nullable()
+      .optional(),
+    isPublic: z.boolean().optional(),
+  })
+  .strict()
+  .refine(
+    (value) => value.slug !== undefined || value.isPublic !== undefined,
+    "At least one status setting is required",
+  );
 export const channelBody = z
   .object({
     type: z.enum(["webhook", "email", "slack"]).default("webhook"),
