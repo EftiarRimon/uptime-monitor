@@ -34,7 +34,7 @@ This project follows the supplied brief: a production-style mini Better Stack/St
 - [x] Timeout policy and check history
 - [x] Redis-backed job queue
 - [ ] TCP, ICMP/ping, and cron heartbeat monitor types
-- [ ] Retry and retention/aggregation policies
+- [x] Retry and retention/aggregation policies
 - [x] Worker startup and Docker restart policy
 
 ### 4. Incidents and alerts
@@ -49,10 +49,10 @@ This project follows the supplied brief: a production-style mini Better Stack/St
 
 ### 5. Public status and API
 
-- [ ] Public status page per workspace with custom slug
-- [ ] Component status and incident communication
-- [ ] Public REST API and API key management
-- [ ] OpenAPI documentation
+- [x] Public status page per workspace with custom slug
+- [x] Component status and incident communication
+- [x] Public REST API and API key management
+- [x] OpenAPI documentation
 
 ### 6. Production readiness
 
