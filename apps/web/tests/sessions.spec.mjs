@@ -21,14 +21,13 @@ const monitor = {
 const unauthorized = (route) =>
   route.fulfill({ status: 401, json: { message: "Access expired" } });
 const defaults = (route, path) =>
-  route.fulfill({
-    json:
-      path === "/auth/me"
-        ? identity
-        : path === "/monitors"
-          ? { monitors: [monitor] }
-          : { incidents: [] },
-  });
+  path === "/auth/me"
+    ? route.fulfill({ json: identity })
+    : path === "/monitors"
+      ? route.fulfill({ json: { monitors: [monitor] } })
+      : path === "/incidents"
+        ? route.fulfill({ json: { incidents: [] } })
+        : route.fulfill({ status: 404, json: { message: "Not found" } });
 
 test("parallel expired requests share one renewal and retry with the new access token", async ({
   page,
@@ -50,7 +49,7 @@ test("parallel expired requests share one renewal and retry with the new access 
       return route.fulfill({ json: renewed });
     }
     if (
-      path !== "/auth/me" &&
+      (path === "/monitors" || path === "/incidents") &&
       route.request().headers().authorization === "Bearer expired-access"
     ) {
       rejected++;
@@ -274,7 +273,7 @@ test("two tabs serialize refresh so rotation is not mistaken for replay", async 
       return route.fulfill({ json: renewed });
     }
     if (
-      path !== "/auth/me" &&
+      (path === "/monitors" || path === "/incidents") &&
       route.request().headers().authorization === "Bearer expired-access"
     ) {
       rejected++;
@@ -320,12 +319,13 @@ test("an account switch in another tab replaces the workspace and clears previou
           workspace: { id: "2", name: "Beta workspace", slug: "beta" },
         },
       });
-    return route.fulfill({
-      json:
-        path === "/monitors"
-          ? { monitors: [{ ...monitor, id: "8", name: "Beta API" }] }
-          : { incidents: [] },
-    });
+    if (path === "/monitors")
+      return route.fulfill({
+        json: { monitors: [{ ...monitor, id: "8", name: "Beta API" }] },
+      });
+    if (path === "/incidents")
+      return route.fulfill({ json: { incidents: [] } });
+    return route.fulfill({ status: 404, json: { message: "Not found" } });
   });
   const first = await context.newPage();
   const second = await context.newPage();

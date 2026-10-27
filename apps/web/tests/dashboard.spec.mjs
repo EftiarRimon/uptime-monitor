@@ -355,11 +355,14 @@ test("failed edits retain input and a successful retry resets the form", async (
   });
   await page.goto("/");
   await page.getByRole("button", { name: "Edit", exact: true }).click();
-  await expect(page.getByLabel("Name", { exact: true })).toBeFocused();
-  await page.getByLabel("Name", { exact: true }).fill("Updated Production API");
+  await expect(page.getByLabel("Name", { exact: true }).first()).toBeFocused();
+  await page
+    .getByLabel("Name", { exact: true })
+    .first()
+    .fill("Updated Production API");
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByText("Monitor update rejected")).toBeVisible();
-  await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
+  await expect(page.getByLabel("Name", { exact: true }).first()).toHaveValue(
     "Updated Production API",
   );
   fail = false;
@@ -370,7 +373,9 @@ test("failed edits retain input and a successful retry resets the form", async (
   await expect(
     page.getByRole("link", { name: "Updated Production API" }),
   ).toBeVisible();
-  await expect(page.getByLabel("Name", { exact: true })).toHaveValue("");
+  await expect(page.getByLabel("Name", { exact: true }).first()).toHaveValue(
+    "",
+  );
   expect(
     await page.evaluate(
       () =>

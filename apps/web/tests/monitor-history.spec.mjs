@@ -89,6 +89,8 @@ test("navigate from dashboard, inspect charts, and change every period", async (
       return route.fulfill({ json: { monitors: [history().monitor] } });
     if (url.pathname === "/incidents")
       return route.fulfill({ json: { incidents: [] } });
+    if (/^\/(notifications|api-keys|status)(\/|$)/.test(url.pathname))
+      return route.fulfill({ status: 404, json: { message: "Not found" } });
     return route.fulfill({
       json: history(Number(url.searchParams.get("hours"))),
     });
