@@ -432,3 +432,32 @@ test("viewer does not see the heartbeat ping URL", async ({ page }) => {
   await expect(page.locator(".type-badge")).toHaveText("heartbeat");
   await expect(page.locator(".ping-url")).toHaveCount(0);
 });
+
+test("owner creates a heartbeat monitor without typing a URL", async ({
+  page,
+}) => {
+  let created = null;
+  await dashboard(page, {
+    override: async (route, url) => {
+      if (route.request().method() === "POST" && url.pathname === "/monitors") {
+        created = route.request().postDataJSON();
+        await route.fulfill({
+          status: 201,
+          json: { monitor: { ...monitor, id: "9", ...created } },
+        });
+        return true;
+      }
+      return false;
+    },
+  });
+  await page.goto("/");
+  await page.getByLabel("Monitor type").selectOption("heartbeat");
+  await expect(page.getByLabel("URL", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".hint")).toBeVisible();
+  await page.getByLabel("Name", { exact: true }).first().fill("Nightly backup");
+  await page.getByRole("button", { name: "Add monitor" }).click();
+  await expect.poll(() => created).not.toBeNull();
+  expect(created.monitorType).toBe("heartbeat");
+  expect(created.url).toBe("heartbeat://nightly-backup");
+  expect(created.intervalSeconds).toBe(60);
+});
