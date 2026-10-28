@@ -11,6 +11,7 @@ import { publicApiRouter } from "./publicApi.js";
 import { statusPageRouter } from "./statusPage.js";
 import { openapiRouter } from "./openapi.js";
 import { heartbeatRouter } from "./heartbeat.js";
+import { httpMetrics, metricsRouter } from "./metrics.js";
 import { webOrigins } from "./authConfig.js";
 import { errorHandler, requestContext, sendError } from "./errors.js";
 
@@ -49,6 +50,7 @@ export function createApp(overrides: Partial<Limits> = {}) {
     .filter(Boolean);
   app.set("trust proxy", proxies.length ? proxies : false);
   app.use(requestContext);
+  app.use(httpMetrics);
   app.use(helmet());
   app.use(
     cors({
@@ -124,6 +126,7 @@ export function createApp(overrides: Partial<Limits> = {}) {
   app.get("/health", (_req, res) =>
     res.json({ status: "ok", uptime: process.uptime() }),
   );
+  app.use("/metrics", metricsRouter);
   app.use("/openapi.json", openapiRouter);
   app.use(
     ["/monitors", "/incidents", "/notifications", "/api-keys", "/public"],
