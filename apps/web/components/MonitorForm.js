@@ -108,8 +108,8 @@ export default function MonitorForm({
         {isHeartbeat && (
           <p className="hint">
             Your job calls a unique ping URL on every run. It is shown on the
-            monitor after you create it. A monitor is marked down if no ping
-            arrives within the interval plus a 60-second grace period.
+            monitor after you create it. A monitor is marked down after two
+            missed intervals.
           </p>
         )}
         <button>
