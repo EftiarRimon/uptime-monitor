@@ -10,6 +10,7 @@ import { apiKeyRouter } from "./apiKeys.js";
 import { publicApiRouter } from "./publicApi.js";
 import { statusPageRouter } from "./statusPage.js";
 import { openapiRouter } from "./openapi.js";
+import { heartbeatRouter } from "./heartbeat.js";
 import { webOrigins } from "./authConfig.js";
 import { errorHandler, requestContext, sendError } from "./errors.js";
 
@@ -138,6 +139,7 @@ export function createApp(overrides: Partial<Limits> = {}) {
   app.use("/api-keys", apiKeyRouter);
   app.use("/public", publicApiRouter);
   app.use("/status", statusPageRouter);
+  app.use("/heartbeat", heartbeatRouter);
   app.use((_req, res) => sendError(res, 404, "Route not found"));
   app.use(errorHandler);
   return app;

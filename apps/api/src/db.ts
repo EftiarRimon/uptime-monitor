@@ -111,6 +111,10 @@ export async function initDatabase() {
     CREATE INDEX IF NOT EXISTS monitor_checks_monitor_time_idx ON monitor_checks (monitor_id, checked_at DESC);
     ALTER TABLE monitors ADD COLUMN IF NOT EXISTS workspace_id BIGINT REFERENCES workspaces(id) ON DELETE CASCADE;
     ALTER TABLE monitors ADD COLUMN IF NOT EXISTS monitor_type TEXT NOT NULL DEFAULT 'http';
+    ALTER TABLE monitors ADD COLUMN IF NOT EXISTS heartbeat_token TEXT;
+    ALTER TABLE monitors ADD COLUMN IF NOT EXISTS last_ping_at TIMESTAMPTZ;
+    UPDATE monitors SET heartbeat_token = replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '') WHERE monitor_type = 'heartbeat' AND heartbeat_token IS NULL;
+    CREATE UNIQUE INDEX IF NOT EXISTS monitors_heartbeat_token_idx ON monitors(heartbeat_token) WHERE heartbeat_token IS NOT NULL;
     ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS status_slug TEXT;
     ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS status_public BOOLEAN NOT NULL DEFAULT FALSE;
     CREATE UNIQUE INDEX IF NOT EXISTS workspaces_status_slug_idx ON workspaces(status_slug) WHERE status_slug IS NOT NULL;

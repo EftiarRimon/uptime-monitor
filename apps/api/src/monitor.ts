@@ -49,12 +49,19 @@ export async function checkMonitor(
       status = response.ok ? "up" : "down";
       if (!response.ok) errorMessage = `HTTP ${response.status}`;
     } else if (type === "heartbeat") {
-      const response = await publicRequest(
-        monitor.url.replace(/^heartbeat:/, "http:"),
+      const beat = await database.query(
+        "SELECT last_ping_at IS NULL AS never, EXTRACT(EPOCH FROM (clock_timestamp() - COALESCE(last_ping_at, created_at)))::float8 AS age_seconds, interval_seconds FROM monitors WHERE id = $1 AND workspace_id = $2",
+        [id, workspaceId],
       );
-      statusCode = response.status;
-      status = response.ok ? "up" : "down";
-      if (!response.ok) errorMessage = `Heartbeat HTTP ${response.status}`;
+      const row = beat.rows[0] as
+        | { never: boolean; age_seconds: number; interval_seconds: number }
+        | undefined;
+      if (!row) throw new Error("Monitor not found");
+      if (row.age_seconds <= row.interval_seconds * 2) status = "up";
+      else
+        errorMessage = row.never
+          ? "No heartbeat received yet"
+          : `No heartbeat for ${Math.round(row.age_seconds)}s`;
     } else {
       const parsed = new URL(monitor.url);
       const host = parsed.hostname;

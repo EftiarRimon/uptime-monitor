@@ -1,4 +1,5 @@
-﻿import { Router } from "express";
+import { Router } from "express";
+import { randomBytes } from "node:crypto";
 import { pool } from "./db.js";
 import { checkMonitor } from "./monitor.js";
 import { authenticate, requireRole } from "./auth.js";
@@ -44,8 +45,17 @@ monitorRouter.post(
       intervalSeconds?: unknown;
     };
     const result = await pool.query(
-      "INSERT INTO monitors (workspace_id, name, url, monitor_type, interval_seconds) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-      [req.auth!.workspaceId, name, url, monitorType, intervalSeconds],
+      "INSERT INTO monitors (workspace_id, name, url, monitor_type, interval_seconds, heartbeat_token) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+      [
+        req.auth!.workspaceId,
+        name,
+        url,
+        monitorType,
+        intervalSeconds,
+        monitorType === "heartbeat"
+          ? randomBytes(24).toString("base64url")
+          : null,
+      ],
     );
     res.status(201).json({ monitor: result.rows[0] });
   },
