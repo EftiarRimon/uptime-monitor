@@ -1,5 +1,7 @@
 /* global process, fetch, localStorage, navigator, window, CustomEvent, atob */
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+export const apiBase = API;
+
 let refreshPromise = null;
 let generation = 0;
 const cancelled = () =>

@@ -15,9 +15,15 @@ import {
   login,
   logout,
   sameSession,
+  apiBase,
 } from "../lib/api";
 
-const blankForm = () => ({ name: "", url: "", intervalSeconds: 60 });
+const blankForm = () => ({
+  name: "",
+  url: "",
+  monitorType: "http",
+  intervalSeconds: 60,
+});
 async function collection(path, key, token, signal) {
   const result = await request(path, { token, signal });
   if (!Array.isArray(result?.[key]))
@@ -260,6 +266,7 @@ export default function Home() {
     setForm({
       name: monitor.name,
       url: monitor.url,
+      monitorType: monitor.monitor_type || "http",
       intervalSeconds: monitor.interval_seconds,
     });
     setActionError("");
@@ -480,7 +487,17 @@ export default function Home() {
                         {monitor.name}
                       </Link>
                     </strong>
-                    <span title={monitor.url}>{monitor.url}</span>
+                    <span title={monitor.url}>
+                      {monitor.monitor_type &&
+                        monitor.monitor_type !== "http" && (
+                          <em className="type-badge">{monitor.monitor_type}</em>
+                        )}{" "}
+                      {monitor.url}
+                    </span>
+                    {monitor.monitor_type === "heartbeat" &&
+                      monitor.heartbeat_token && (
+                        <code className="ping-url">{`${apiBase}/heartbeat/${monitor.heartbeat_token}`}</code>
+                      )}
                     <small>
                       {monitor.last_checked_at
                         ? `Last checked ${new Date(monitor.last_checked_at).toLocaleString()}`
