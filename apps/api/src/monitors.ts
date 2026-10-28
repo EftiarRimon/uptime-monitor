@@ -12,6 +12,7 @@ import {
   validateId,
 } from "./validation.js";
 import { sendError } from "./errors.js";
+import { monitorView } from "./secrets.js";
 import { updateIncident } from "./incident.js";
 import { notifyIncident } from "./notifications.js";
 
@@ -25,7 +26,9 @@ monitorRouter.get("/", async (req, res) => {
     "SELECT * FROM monitors WHERE workspace_id = $1 ORDER BY created_at DESC",
     [req.auth!.workspaceId],
   );
-  res.json({ monitors: result.rows });
+  res.json({
+    monitors: result.rows.map((row) => monitorView(row, req.auth!.role)),
+  });
 });
 
 monitorRouter.post(

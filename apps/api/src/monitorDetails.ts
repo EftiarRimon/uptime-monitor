@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { pool } from "./db.js";
 import { historyQuery } from "./validation.js";
 import { sendError } from "./errors.js";
+import { monitorView } from "./secrets.js";
 
 export async function monitorDetails(req: Request, res: Response) {
   const id = Number(req.params.id);
@@ -58,7 +59,7 @@ export async function monitorDetails(req: Request, res: Response) {
   ]);
 
   return res.json({
-    monitor: monitor.rows[0],
+    monitor: monitorView(monitor.rows[0], req.auth!.role),
     period: { hours, startsAt, endsAt, bucketSeconds },
     summary: summary.rows[0],
     series: series.rows,
