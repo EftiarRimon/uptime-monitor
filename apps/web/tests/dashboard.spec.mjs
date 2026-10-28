@@ -388,3 +388,47 @@ test("failed edits retain input and a successful retry resets the form", async (
     fullPage: true,
   });
 });
+
+test("owner sees heartbeat badge and ping URL", async ({ page }) => {
+  await dashboard(page, {
+    monitors: () => [
+      {
+        ...monitor,
+        id: "8",
+        name: "Nightly backup",
+        url: "heartbeat://nightly-backup",
+        monitor_type: "heartbeat",
+        heartbeat_token: "abc123tokenabc123tokenabc123",
+      },
+    ],
+  });
+  await page.goto("/");
+  await expect(
+    page.getByRole("link", { name: "Nightly backup" }),
+  ).toBeVisible();
+  await expect(page.locator(".type-badge")).toHaveText("heartbeat");
+  await expect(page.locator(".ping-url")).toContainText(
+    "/heartbeat/abc123tokenabc123tokenabc123",
+  );
+});
+
+test("viewer does not see the heartbeat ping URL", async ({ page }) => {
+  await dashboard(page, {
+    session: { ...identity, role: "viewer" },
+    monitors: () => [
+      {
+        ...monitor,
+        id: "8",
+        name: "Nightly backup",
+        url: "heartbeat://nightly-backup",
+        monitor_type: "heartbeat",
+      },
+    ],
+  });
+  await page.goto("/");
+  await expect(
+    page.getByRole("link", { name: "Nightly backup" }),
+  ).toBeVisible();
+  await expect(page.locator(".type-badge")).toHaveText("heartbeat");
+  await expect(page.locator(".ping-url")).toHaveCount(0);
+});
